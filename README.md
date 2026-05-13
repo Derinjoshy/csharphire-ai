@@ -17,3 +17,6 @@ AI-powered recruitment automation workflow built with n8n and Gemini API for C# 
 - Gmail API
 - Google Calendar API
 - Google Drive API
+
+## Workflow Overview
+![Workflow](workflow-overview.png)
