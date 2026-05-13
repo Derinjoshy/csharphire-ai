@@ -1,0 +1,578 @@
+{
+  "name": "interview scheduler",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -928,
+        320
+      ],
+      "id": "84f2b881-0afe-4a90-9ca9-90f62191c283",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "'1kBPENgmRogO7GAgmAmq_6ogOs9nDRFdp' in parents and mimeType='application/pdf'",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -912,
+        -16
+      ],
+      "id": "1697f06c-f2f7-4a15-8c1e-733aa4a07f24",
+      "name": "Search files and folders",
+      "alwaysOutputData": false,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "XDWdag3h4g5XlGBp",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -720,
+        -16
+      ],
+      "id": "9f3d9a46-713e-4fca-8c61-7518d64c0345",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -512,
+        0
+      ],
+      "id": "dd7d1317-68dd-452d-9a61-20d6e3a2c353",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "XDWdag3h4g5XlGBp",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -336,
+        0
+      ],
+      "id": "4ce0f307-fd68-447c-a944-a70d40cdcdf6",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please analyse the following Curriculum Vitae content and return relevant details about the applicant and your recommendation about the applicants suitability to fill the position as senior C# software developer:  {{ $json.text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "# Role\nYou are a Human Resources employee working for a software development company. Your role is to analyse Curriculum Vitae's of applicants for a senior development position where the user must possess skills at a senior level in C# programming and have appropriate experience developing software using associated technologies with C# (e.g. MAUI or Blazor).\n\n# Instructions\nFollow these steps in analysing a Curriculum Vitae and outputting relevant data in your response\n1. Read through the provided information \n2. Get the applicants full name and email address from the Curriculum Vitae\n3. Get the total number of years of experience the applicant has working with C# and associated technologies\n4. Get notable features about the applicants qualifications\n5. Get notable features about the applicants work experience\n6. Conclude as to whether you would recommend the applicant for the position of senior C# developer"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -160,
+        0
+      ],
+      "id": "e928c2d8-896b-48ce-a96b-9ec122d1c4a8",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        208
+      ],
+      "id": "863d0634-be08-4868-b69d-2910ac66de97",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"fullName\": \"Bob Jones\",\n\t\"email\": \"bobjones@gmail.com\",\n\t\"cSharpYearsExperience\": 5,\n\t\"notableQualifications\": \"The applicant has an honours degree in Computer Science\",\n\t\"notableWorkExperience\": \"The applicant has worked on several projects using Blazor and .NET MAUI. The applicant also has significant experience working with AI\",\n\t\"Recommended\":true\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -16,
+        208
+      ],
+      "id": "4b412d1d-5445-4f21-8d15-2d69957514ef",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "derinjoshy25@gmail.com",
+        "subject": "Approval Required",
+        "message": "=Please approve or disapprove this applicant?\n\nApplicant Details:\nName: {{ $json.output.fullName }}\nEmail: {{ $json.output.email }}\n\nYears of Experience with C#: {{ $json.output.cSharpYearsExperience }}\n\nNotable Qualifications:\n{{ $json.output.notableQualifications }}\n\nNotable Work Experience\n{{ $json.output.notableWorkExperience }}\n\nMy Recommendation\n{{ ($json.output.Recommended?\"I recommend this applicant\":\"I do not recommend this applicant\") }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double"
+          }
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        176,
+        0
+      ],
+      "id": "b631189a-5a4d-46a5-bb5d-a65b3b8f9ad3",
+      "name": "Send message and wait for response",
+      "webhookId": "ccf216e7-f470-4e75-ade2-2bdf197dc3cc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mGHTWWR7BjlvZ81n",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "90ac5014-9500-45ab-9497-4cb31eee8e4f",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        368,
+        0
+      ],
+      "id": "8b0b78bd-0a4e-44a8-b6bb-9f05c288ad9c",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an assistant that schedules interviews in Google Calendar.\n\nInstructions\n\nFetch Events\nCall the GetCalendarEvents tool to retrieve all existing events between Monday 00:00 and Friday 23:59 of the next calendar week after {{ $now }}.\n\nIf today is within this week, you must skip it. Only consider next week.\n\nFind Availability\nAnalyze the retrieved events. Identify the earliest available 1-hour free slot within working hours (08:00–18:00 local time).\n\nDo not select a time that overlaps with an existing event.\n\nDo not schedule outside 08:00–18:00.\n\nOnly use dates from next week’s Monday–Friday window.\n\nSchedule Event\nOnce a free slot is found, call the CreateCalendarEvent tool with:\n\nsummary: \"Interview with {{ $('AI Agent').item.json.output.fullName }}\"\n\nstart.dateTime: the beginning of the identified 1-hour slot (ISO 8601 format).\n\nend.dateTime: the start time plus exactly 60 minutes.\n\nattendees:\n\n{\"email\": \"derinjoshy25@gmail.com\"}\n\n{\"email\": \"killmaniac25@gmail.com\"}\n\nReturn Confirmation\nReturn only the scheduled event details as valid JSON in the following format:\n\n{\n  \"summary\": \"Interview with {{ $('AI Agent').item.json.output.fullName }}\",\n  \"start\": { \"dateTime\": \"YYYY-MM-DDTHH:MM:SS\" },\n  \"end\": { \"dateTime\": \"YYYY-MM-DDTHH:MM:SS\" },\n  \"attendees\": [\n    { \"email\": \"derinjoshy25@gmail.com\" },\n    { \"email\": \"killmaniac25@gmail.com\" }\n  ]\n}\n\nRules\n\nToday’s date/time is {{ $now }}.\n\nOnly consider Monday–Friday of the next calendar week.\n\nThe event must last exactly 60 minutes.\n\nRespect all existing events from GetCalendarEvents.\n\nOutput must be only valid JSON (no explanations, no markdown).",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        608,
+        -16
+      ],
+      "id": "43b4e224-3970-468c-98e3-0c5c64f499f7",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        608,
+        160
+      ],
+      "id": "b5d4694d-c5a9-4f73-8b75-c74dea03ce67",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "derinjoshy25@gmail.com",
+          "mode": "list",
+          "cachedResultName": "derinjoshy25@gmail.com"
+        },
+        "returnAll": true,
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        880,
+        256
+      ],
+      "id": "42743ae0-d511-4288-92e7-73a4d03299d1",
+      "name": "GetCalendarEvents",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "EKtr9VslqOSDsggK",
+          "name": "Google Calendar OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "derinjoshy25@gmail.com",
+          "mode": "list",
+          "cachedResultName": "derinjoshy25@gmail.com"
+        },
+        "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+        "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('attendees0_Attendees', ``, 'string') }}",
+            "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('attendees1_Attendees', ``, 'string') }}"
+          ],
+          "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+          "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        736,
+        288
+      ],
+      "id": "94f9fa19-8f4b-4b4d-8425-f3994ed8e0c7",
+      "name": "CreateCalendarEvent",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "EKtr9VslqOSDsggK",
+          "name": "Google Calendar OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Write a highly professional and formal email rejecting a candidate’s CV for a job application. The tone should be respectful, polite, and corporate. Mention appreciation for the candidate’s interest and time, clearly state that the application was not selected after careful review, and encourage them to apply for future opportunities. Keep the email concise and professional.subject is not required.complete all sentences.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        176,
+        288
+      ],
+      "id": "a4a088b4-1a85-4b6e-9ad5-97d5dd2fdd9a",
+      "name": "AI Agent2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        176,
+        464
+      ],
+      "id": "1aa7243d-05e0-4fac-9217-3c4cc181412a",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('AI Agent').item.json.output.email }}",
+        "subject": "Hi",
+        "emailType": "text",
+        "message": "=\nDear {{ $('AI Agent').item.json.output.fullName }},\\n\\nThank you for your interest in diq and for the time you invested in applying for the C# developer position.\\n\\nAfter a thorough review of your application and professional background, we are writing to inform you that we have decided to proceed with other candidates whose qualifications more closely align with our current requirements. Please be assured that your credentials received careful consideration from our selection committee.\\n\\nWe appreciate the opportunity to have reviewed your profile. We will retain your information in our talent database for future o...",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        288
+      ],
+      "id": "703c08d4-ba00-46da-9ea4-6f8f65358d35",
+      "name": "Send a message",
+      "webhookId": "dcdc222b-687a-456c-ab8b-22bf5eb78512",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mGHTWWR7BjlvZ81n",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Search files and folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetCalendarEvents": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CreateCalendarEvent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b5902c1e-614f-4387-87be-7c50f10b5612",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b11ecaa2c983f55d143c626c835fe45f169b5a98d130deac8889bc27d770cd89"
+  },
+  "id": "IjejXowQC3jU7FLf",
+  "tags": []
+}
